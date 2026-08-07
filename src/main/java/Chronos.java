@@ -1,5 +1,7 @@
 import java.util.Scanner;
 
+import Task.Task;
+
 /**
  * Starts the Chronos chatbot application.
  */
@@ -15,7 +17,7 @@ public class Chronos {
 
     private static final Scanner scanner = new Scanner(System.in);
     private static boolean exit = false;
-    private static final String[] taskList = new String[100];
+    private static final Task[] taskList = new Task[100];
     private static int taskCount = 0;
 
     public static String getInput() {
@@ -24,8 +26,30 @@ public class Chronos {
 
     public static void echo(String input) {
         System.out.println("added: " + input);
-        taskList[taskCount] = input;
+        taskList[taskCount] = new Task(input);
         taskCount++;
+    }
+
+    public static void mark(String input) {
+        int taskIndex = Integer.parseInt(input) - 1;
+        if (taskIndex >= 0 && taskIndex < taskCount) {
+            Task target = taskList[taskIndex];
+            target.mark();
+            System.out.println("Task marked as done: " + taskList[taskIndex]);
+        } else {
+            System.out.println("Invalid task index.");
+        }
+    }
+
+    public static void unmark(String input) {
+        int taskIndex = Integer.parseInt(input) - 1;
+        if (taskIndex >= 0 && taskIndex < taskCount) {
+            Task target = taskList[taskIndex];
+            target.unmark();
+            System.out.println("Task marked as not done: " + taskList[taskIndex]);
+        } else {
+            System.out.println("Invalid task index.");
+        }
     }
 
     public static void printList() {
@@ -46,7 +70,7 @@ public class Chronos {
 
         while (!exit) {
             String input = getInput();
-            switch (input) {
+            switch (input.split(" ")[0]) {
                 case "bye":
                     Chronos.printGoodbye();
                     exit = true;
@@ -54,8 +78,15 @@ public class Chronos {
                 case "list":
                     Chronos.printList();
                     break;
+                case "mark":
+                    Chronos.mark(input.split(" ")[1]);
+                    break;
+                case "unmark":
+                    Chronos.unmark(input.split(" ")[1]);
+                    break;
                 default:
                     Chronos.echo(input);
+                    break;
             }
             System.out.println(separator);
         }
