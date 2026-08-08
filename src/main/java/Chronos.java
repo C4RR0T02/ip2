@@ -1,3 +1,4 @@
+import java.time.DateTimeException;
 import java.util.Scanner;
 
 import Task.Deadline;
@@ -27,7 +28,7 @@ public class Chronos {
             "deadline <task>, <deadline*> - Add a new deadline\n" +
             "help - Display this help message\n" +
             "bye - Exit the application\n" +
-            "* Date format should be dd-MM-yyyy HH:mm:ss if time is omitted, it will default to 00:00:00";
+            "* Date format should be dd-MM-yyyy or dd-MM-yyyy HH:mm:ss";
 
     private static final Scanner scanner = new Scanner(System.in);
     private static boolean exit = false;
@@ -42,52 +43,58 @@ public class Chronos {
         System.out.print(helpMessage);
     }
 
-    public static void addToTasklist(Task task) {
+    public static void addToTasklist(Task task) throws ChronosException {
+        if (taskCount == taskList.length) {
+            throw new ChronosException("Task list is full. Remove a task before adding another one.");
+        }
         System.out.println("added: " + task);
         taskList[taskCount] = task;
         taskCount++;
     }
 
-    public static void mark(String input) {
-        int taskIndex = Integer.parseInt(input) - 1;
-        if (taskIndex >= 0 && taskIndex < taskCount) {
-            Task target = taskList[taskIndex];
-            target.mark();
-            System.out.println("Task marked as done: " + taskList[taskIndex]);
-        } else {
-            System.out.println("Invalid task index.");
+    public static void mark(String input) throws ChronosException {
+        Task target = getTask(input);
+        target.mark();
+        System.out.println("Task marked as done: " + target);
+    }
+
+    public static void unmark(String input) throws ChronosException {
+        Task target = getTask(input);
+        target.unmark();
+        System.out.println("Task marked as not done: " + target);
+    }
+
+    public static void addTodo(String input) throws ChronosException {
+        addToTasklist(new ToDo(input));
+    }
+
+    public static void addDeadline(String input) throws ChronosException {
+        String[] details = input.split(",", 2);
+        if (details.length != 2 || details[0].isBlank() || details[1].isBlank()) {
+            throw new ChronosException("Use deadline <task>, <deadline>.");
+        }
+        try {
+            Deadline newDeadline = new Deadline(details[0].trim(), details[1].trim());
+            addToTasklist(newDeadline);
+        } catch (DateTimeException exception) {
+            throw new ChronosException("Deadline date must use dd-MM-yyyy or dd-MM-yyyy HH:mm:ss.");
         }
     }
 
-    public static void unmark(String input) {
-        int taskIndex = Integer.parseInt(input) - 1;
-        if (taskIndex >= 0 && taskIndex < taskCount) {
-            Task target = taskList[taskIndex];
-            target.unmark();
-            System.out.println("Task marked as not done: " + taskList[taskIndex]);
-        } else {
-            System.out.println("Invalid task index.");
+    public static void addEvent(String input) throws ChronosException {
+        String[] details = input.split(",", 3);
+        if (details.length != 3 || details[0].isBlank() || details[1].isBlank() || details[2].isBlank()) {
+            throw new ChronosException("Use event <name>, <start>, <end>.");
         }
-    }
-
-    public static void addTodo(String input) {
-        ToDo newTodo = new ToDo(input);
-        addToTasklist(newTodo);
-    }
-
-    public static void addDeadline(String input) {
-        String taskName = input.split(",")[0].trim();
-        String deadline = input.split(",")[1].trim();
-        Deadline newDeadline = new Deadline(taskName, deadline);
-        addToTasklist(newDeadline);
-    }
-
-    public static void addEvent(String input) {
-        String eventName = input.split(",")[0].trim();
-        String start = input.split(",")[1].trim();
-        String end = input.split(",")[2].trim();
-        Event newEvent = new Event(eventName, start, end);
-        addToTasklist(newEvent);
+        try {
+            Event newEvent = new Event(details[0].trim(), details[1].trim(), details[2].trim());
+            if (!newEvent.getStart().isBefore(newEvent.getEnd())) {
+                throw new ChronosException("Event start date must be before its end date.");
+            }
+            addToTasklist(newEvent);
+        } catch (DateTimeException exception) {
+            throw new ChronosException("Event dates must use dd-MM-yyyy or dd-MM-yyyy HH:mm:ss.");
+        }
     }
 
     public static void printList() {
@@ -100,6 +107,26 @@ public class Chronos {
         System.out.println("Bye. Hope to see you again soon!");
     }
 
+    private static String getTaskArgument(String command, String argument) throws ChronosException {
+        if (argument.isBlank()) {
+            throw new ChronosException("The " + command + " command needs an argument.");
+        }
+        return argument;
+    }
+
+    private static Task getTask(String input) throws ChronosException {
+        int taskIndex;
+        try {
+            taskIndex = Integer.parseInt(input) - 1;
+        } catch (NumberFormatException exception) {
+            throw new ChronosException("Task number must be a whole number.");
+        }
+        if (taskIndex < 0 || taskIndex >= taskCount) {
+            throw new ChronosException("Task number must refer to an existing task.");
+        }
+        return taskList[taskIndex];
+    }
+
     public static void main(String[] args) {
         System.out.println(separator);
         System.out.println(banner);
@@ -107,8 +134,15 @@ public class Chronos {
         System.out.println(separator);
 
         while (!exit) {
-            String input = getInput();
-            switch (input.split(" ")[0]) {
+            try {
+                String input = getInput();
+                if (input.isBlank()) {
+                    throw new ChronosException("Please enter a command.");
+                }
+                String command = input.split(" ")[0];
+                String commandTrim = input.substring(command.length()).trim();
+
+                switch (command) {
                 case "bye":
                     Chronos.printGoodbye();
                     exit = true;
@@ -117,23 +151,28 @@ public class Chronos {
                     Chronos.printList();
                     break;
                 case "mark":
-                    Chronos.mark(input.split(" ")[1]);
+                    Chronos.mark(getTaskArgument(command, commandTrim));
                     break;
                 case "unmark":
-                    Chronos.unmark(input.split(" ")[1]);
+                    Chronos.unmark(getTaskArgument(command, commandTrim));
                     break;
                 case "todo":
-                    Chronos.addTodo(input.substring(5));
+                    Chronos.addTodo(getTaskArgument(command, commandTrim));
                     break;
                 case "event":
-                    Chronos.addEvent(input.substring(6));
+                    Chronos.addEvent(getTaskArgument(command, commandTrim));
                     break;
                 case "deadline":
-                    Chronos.addDeadline(input.substring(9));
+                    Chronos.addDeadline(getTaskArgument(command, commandTrim));
                     break;
-                default:
+                case "help":
                     Chronos.getHelp();
                     break;
+                default:
+                    throw new ChronosException("Unknown command: " + command + ". Type help to see available commands.");
+                }
+            } catch (ChronosException exception) {
+                System.out.println("Error: " + exception.getMessage());
             }
             System.out.println(separator);
         }
