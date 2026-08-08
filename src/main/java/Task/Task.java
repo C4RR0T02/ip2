@@ -16,8 +16,12 @@ public class Task {
         return taskName;
     }
 
-    public String isDone() {
-        return (isDone ? "X" : " ");
+    public boolean isDone() {
+        return isDone;
+    }
+
+    public String isDoneStatus() {
+        return isDone ? "X" : " ";
     }
 
     /**
@@ -27,12 +31,15 @@ public class Task {
         isDone = true;
     }
 
+    /**
+     * Marks this task as incomplete
+     */
     public void unmark() {
         isDone = false;
     }
 
     @Override
     public String toString() {
-        return "[" + isDone() + "] " + taskName;
+        return "[" + isDoneStatus() + "] " + taskName;
     }
 }
